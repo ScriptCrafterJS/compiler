@@ -4,11 +4,32 @@ public class RecursiveDescentParser {
     private List<String> tokens;
     private int currentTokenIndex = 0;
     private String currentToken;
+    // #include|const|var|int|float|char|function|newb|endb|if|else|while|repeat|until|cin|cout|call|exit
+    // create a list full of keywords
+    LinkedList<String> keywords = new LinkedList<String>();
 
     // the constructor accepts the list of tokens
     public RecursiveDescentParser(List<String> tokens) {
         this.tokens = tokens;
         this.currentToken = tokens.get(currentTokenIndex);
+        this.keywords.add("#include");
+        this.keywords.add("const");
+        this.keywords.add("var");
+        this.keywords.add("int");
+        this.keywords.add("float");
+        this.keywords.add("char");
+        this.keywords.add("function");
+        this.keywords.add("newb");
+        this.keywords.add("endb");
+        this.keywords.add("if");
+        this.keywords.add("else");
+        this.keywords.add("while");
+        this.keywords.add("repeat");
+        this.keywords.add("until");
+        this.keywords.add("cin");
+        this.keywords.add("cout");
+        this.keywords.add("call");
+        this.keywords.add("exit");
     }
 
     private void getToken() {
@@ -24,7 +45,7 @@ public class RecursiveDescentParser {
     // error() method to handle syntax errors that may occur during the parsing
     // process
     private void error(String message) {
-        System.err.println("Error: " + message + " provided " + currentToken);
+        System.err.println("Error: " + message + " provided " + currentToken + " (index " + currentTokenIndex + ")");
         // System.err.println("Error: " + message + " provided " + currentToken + "
         // (index " + currentTokenIndex + ")");
         System.exit(1);
@@ -38,7 +59,7 @@ public class RecursiveDescentParser {
         return false;
     }
 
-    private void program() {
+    public void program() {
         libDecl();
         declarations();
         while (currentToken != null && currentToken.equals("function")) {
@@ -54,8 +75,7 @@ public class RecursiveDescentParser {
 
     // libDecl() method to parse the library declarations
     private void libDecl() {
-        if (currentToken != null && currentToken.equals("#include")) {
-            getToken();
+        if (match("#include")) {
             if (!match("<"))
                 error("Expected '<'");
             if (!isValidFileName(currentToken))
@@ -65,10 +85,6 @@ public class RecursiveDescentParser {
             if (!match(";"))
                 error("Expected ';'");
             libDecl();
-        } else if (currentToken == null) {
-            return;
-        } else {
-            error("Unexpected token: " + currentToken);
         }
     }
 
@@ -78,10 +94,10 @@ public class RecursiveDescentParser {
         }
 
         // check if the file name has a valid extension
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
-            return false; // no extension found
-        }
+        // int dotIndex = fileName.lastIndexOf('.');
+        // if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
+        // return false; // no extension found
+        // }
 
         // check if the file name contains only valid characters
         String regex = "^[a-zA-Z0-9_\\-\\.]+$";
@@ -100,9 +116,7 @@ public class RecursiveDescentParser {
     private void constDecl() {
         if (match("const")) {
             dataType();
-            if (!match("const-name")) {
-                error("Expected 'const-name'");
-            }
+            name();
             if (!match("=")) {
                 error("Expected '='");
             }
@@ -111,6 +125,14 @@ public class RecursiveDescentParser {
                 error("Expected ';'");
             }
             constDecl();
+        }
+    }
+
+    private void name() {
+        if (currentToken != null && currentToken.matches("[a-zA-Z_][a-zA-Z_0-9-]*|<[^>]+>")) {
+            getToken();
+        } else {
+            error("Expected a name");
         }
     }
 
@@ -140,19 +162,19 @@ public class RecursiveDescentParser {
         }
     }
 
-    private boolean isValidConstName(String constName) {
-        if (constName.isEmpty() || constName == null) {
-            return false;
-        }
+    // private boolean isValidConstName(String constName) {
+    // if (constName.isEmpty() || constName == null) {
+    // return false;
+    // }
 
-        // check if the const name contains only valid characters
-        String regex = "^[a-zA-Z0-9_\\-]+$";
-        if (!constName.matches(regex)) {
-            return false;
-        }
+    // // check if the const name contains only valid characters
+    // String regex = "^[a-zA-Z0-9_\\-]+$";
+    // if (!constName.matches(regex)) {
+    // return false;
+    // }
 
-        return true;
-    }
+    // return true;
+    // }
 
     private void varDecl() {
         if (match("var")) {
@@ -174,9 +196,13 @@ public class RecursiveDescentParser {
     }
 
     private void nameList() {
-        if (!match("var-name"))
-            error("Expected 'var-name'");
+        name();
         moreNames();
+    }
+
+    private void moreNames() {
+        if (match(","))
+            nameList();
     }
 
     private void functionDecl() {
@@ -190,8 +216,7 @@ public class RecursiveDescentParser {
     private void functionHeading() {
         if (!match("function"))
             error("Expected 'function'");
-        if (!match("function-name"))
-            error("Expected 'function-name'");
+        name();
         if (!match(";"))
             error("Expected ';'");
     }
@@ -204,25 +229,26 @@ public class RecursiveDescentParser {
             error("Expected 'endb'");
     }
 
-    // ! we have to check for the endb condition thing if its the right thing to do
     private void stmtList() {
-        while (currentToken != null && !currentToken.equals("endb")) {
+        if (currentToken.equals("cin") || currentToken.equals("cout") || currentToken.equals("if")
+                || currentToken.equals("while") || currentToken.equals("repeat") || currentToken.equals("call")
+                || currentToken.equals("newb")
+                || (!currentToken.equals("endb") && !currentToken.equals("until")
+                        && currentToken.matches("[a-zA-Z_][a-zA-Z_0-9-]*|<[^>]+>"))) {
             statement();
             if (!match(";"))
                 error("Expected ';'");
+            stmtList();
         }
     }
 
     private void statement() {
-        if (match("var-name")) {
-            if (!match(":="))
-                error("Expected ':='");
-            exp();
+        if (!keywords.contains(currentToken)) {
+            assStmt();
         } else if (match("cin")) {
             if (!match(">>"))
                 error("Expected '>>'");
-            if (!match("var-name"))
-                error("Expected 'var-name'");
+            name();
         } else if (match("cout")) {
             if (!match("<<"))
                 error("Expected '<<'");
@@ -249,11 +275,17 @@ public class RecursiveDescentParser {
                 error("Expected 'until'");
             condition();
         } else if (match("call")) {
-            if (!match("function-name"))
-                error("Expected 'function-name'");
-        } else {
+            name();
+        } else if (currentToken.equals("newb")) {
             block();
         }
+    }
+
+    private void assStmt() {
+        name();
+        if (!match(":="))
+            error("Expected ':='");
+        exp();
     }
 
     private void exp() {
@@ -263,10 +295,19 @@ public class RecursiveDescentParser {
 
     private void expPrime() {
         if (match("+") || match("-")) {
+            // addOp();
             term();
             expPrime();
         }
     }
+
+    // private void addOp() {
+    // if (match("+") || match("-")) {
+    // return;
+    // } else {
+    // error("Expected '+' or '-'");
+    // }
+    // }
 
     private void term() {
         factor();
@@ -280,27 +321,25 @@ public class RecursiveDescentParser {
         }
     }
 
-    // ! here we have to fix the check for the value because its a function
     private void factor() {
         if (match("(")) {
             exp();
             if (!match(")")) {
                 error("Expected ')'");
             }
-        } else if (match("var-name")) {
-
-        } else if (match("const-name")) {
-
+        } else if (currentToken != null && currentToken.matches("[a-zA-Z_][a-zA-Z_0-9-]*|<[^>]+>")) {
+            name();
         } else {
             value();
         }
     }
 
     private void nameValue() {
-        if (match("var-name") || match("const-name") || match("value")) {
-            return;
+        if (currentToken != null && currentToken.matches("[a-zA-Z_][a-zA-Z_0-9-]*|<[^>]+>")) {
+            getToken();
+        } else {
+            value();
         }
-        error("Expected 'var-name', 'const-name', or 'value'");
     }
 
     private void condition() {
@@ -317,15 +356,5 @@ public class RecursiveDescentParser {
         if (match("else")) {
             statement();
         }
-    }
-
-    public static void main(String[] args) {
-        String input = "#include <file-name>; const int x = 10; var float y; exit";
-        Scanner lexer = new Scanner(input);
-        lexer.scan();
-        List<String> tokens = lexer.getTokens();
-        RecursiveDescentParser parser = new RecursiveDescentParser(tokens);
-        parser.program();
-        System.out.println("Parsing completed successfully.");
     }
 }

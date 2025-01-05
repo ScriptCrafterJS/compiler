@@ -14,11 +14,11 @@ public class Scanner {
         // regex patterns for each token type
         tokenPatterns.put("RESERVED",
                 "(#include|const|var|int|float|char|function|newb|endb|if|else|while|repeat|until|cin|cout|call|exit)");
-        tokenPatterns.put("OPERATOR", "(:=|\\+|-|\\*|/|mod|div|=|=!|<|=<|>|=>)");
         tokenPatterns.put("SYMBOL", "(;|,|\\(|\\)|>>|<<)");
-        tokenPatterns.put("IDENTIFIER", "([a-zA-Z_][a-zA-Z_0-9]*)");
-        tokenPatterns.put("INTEGER", "(\\d+)");
+        tokenPatterns.put("OPERATOR", "(:=|\\+|-|\\*|/|mod|div|=!|=<|=>|<|>|=)");
+        tokenPatterns.put("IDENTIFIER", "([a-zA-Z_][a-zA-Z_0-9-]*|<[^>]+>)");
         tokenPatterns.put("REAL", "(\\d+\\.\\d+)");
+        tokenPatterns.put("INTEGER", "(\\d+)");
         tokenPatterns.put("WHITESPACE", "(\\s+)");
 
         this.input = input;
@@ -57,7 +57,9 @@ public class Scanner {
                 Pattern tokenPattern = Pattern.compile(tokenPatterns.get(tokenType));
                 Matcher tokenMatcher = tokenPattern.matcher(matcher.group());
                 if (tokenMatcher.matches()) {
-                    tokens.add(matcher.group());
+                    if (!tokenType.equals("WHITESPACE")) {
+                        this.tokens.add(matcher.group());
+                    }
                     break;
                 }
             }
